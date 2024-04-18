@@ -42,14 +42,12 @@ class MultiHeadInfiniAttention(nn.Module):
             mem, z = self.memory_update(k, v, mem, z)
 
             # Compute attention
-            sigma_q = F.elu(q) + 1.0
+
             att_dot = F.softmax(q @ k.transpose(-2, -1) / torch.sqrt(torch.tensor(self.dim_k)), dim=-1) @ v
-            att_mem = (sigma_q @ mem) / (sigma_q @ z)
+            att_mem = self.memory_retrieval(mem,z,q)
 
             # Weighted average of attentions
-            att = F.sigmoid(self.beta) * att_mem + (1 - F.sigmoid(self.beta)) * att_dot
-            att = att.view(batch_size, self.segment_length, self.n_head * self.dim_v)
-
+            att =self.long_term_context_injection(att_mem,att_dot,batch_size)
             # Append processed segment to outputs
             outputs.append(self.out(att))
 
@@ -58,7 +56,7 @@ class MultiHeadInfiniAttention(nn.Module):
 
     def memory_retrieval(self, memory, z, q):
         sigma_q = F.elu(q) + 1.0
-        a_mem = torch.matmul(sigma_q, memory) / (torch.matmul(sigma_q, z.unsqueeze(-1)) + 1e-5)
+        a_mem = torch.matmul(sigma_q, memory) / (torch.matmul(sigma_q, z))
         return a_mem
     
     def memory_update(self, k, v, memory, z):
@@ -70,10 +68,10 @@ class MultiHeadInfiniAttention(nn.Module):
         z += summed_sigma_k.unsqueeze(-1) * self.segment_length  # Adjusting dimension if necessary
         return memory, z
 
-    def long_term_context_injection(self, a_mem, a_dot):
-        beta_sigmoid = torch.sigmoid(self.beta)
-        combined_attention = beta_sigmoid * a_mem + (1 - beta_sigmoid) * a_dot
-        return combined_attention
+    def long_term_context_injection(self, a_mem, a_dot,batch_size):
+        att = F.sigmoid(self.beta) * a_mem + (1 - F.sigmoid(self.beta)) * a_dot
+        att = att.view(batch_size, self.segment_length, self.n_head * self.dim_v)
+        return att
 
 
 if __name__ == '__main__':
