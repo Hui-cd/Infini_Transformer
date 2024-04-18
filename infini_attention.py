@@ -55,12 +55,12 @@ class MultiHeadInfiniAttention(nn.Module):
         return torch.cat(outputs, dim=1)
 
     def memory_retrieval(self, memory, z, q):
-        sigma_q = F.elu(q) + 1.0
+        sigma_q = F.elu(q)
         a_mem = torch.matmul(sigma_q, memory) / (torch.matmul(sigma_q, z))
         return a_mem
     
     def memory_update(self, k, v, memory, z):
-        sigma_k = F.elu(k) + 1.0
+        sigma_k = F.elu(k)
         sigma_k_transposed = sigma_k.transpose(-2, -1)  # Align dimensions for multiplication
         memory_update = torch.matmul(sigma_k_transposed, v)
         memory += memory_update
@@ -69,7 +69,7 @@ class MultiHeadInfiniAttention(nn.Module):
         return memory, z
 
     def long_term_context_injection(self, a_mem, a_dot,batch_size):
-        att = F.sigmoid(self.beta) * a_mem + (1 - F.sigmoid(self.beta)) * a_dot
+        att = torch.sigmoid(self.beta) * a_mem + (1 - torch.sigmoid(self.beta)) * a_dot
         att = att.view(batch_size, self.segment_length, self.n_head * self.dim_v)
         return att
 
@@ -83,3 +83,4 @@ if __name__ == '__main__':
     model = MultiHeadInfiniAttention(n_head=n_head, dim_input=dim_input, dim_k=dim_key, segment_length=segment_len, dim_v=dim_value)
     test = torch.randn(4, 128, dim_input)
     x = model(test)
+    print(x.shape)
