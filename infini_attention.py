@@ -28,10 +28,10 @@ class MultiHeadInfiniAttention(nn.Module):
         z = torch.zeros(batch_size, self.n_head, self.dim_k, 1, device=x.device)
 
         outputs = []
-        for ix in range(n_seq):
-            ix_lo = ix * self.segment_length
-            ix_hi = ix_lo + self.segment_length
-            segment = x[:, ix_lo:ix_hi, :]
+        for i in range(n_seq):
+            start = i * self.segment_length
+            end = start + self.segment_length
+            segment = x[:, start :end, :]
             
             # Project segment to queries, keys, and values
             k = self.w_k(segment).view(batch_size, -1, self.n_head, self.dim_k).transpose(1, 2)
