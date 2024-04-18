@@ -56,12 +56,6 @@ class MultiHeadInfiniAttention(nn.Module):
         # Concatenate all segments to form the full sequence output
         return torch.cat(outputs, dim=1)
 
-    def memory_update(self, k, v, mem, z):
-        sigma_k = F.elu(k) + 1.0
-        mem += sigma_k.transpose(-2, -1) @ v
-        z += sigma_k.sum(dim=2, keepdim=True) * self.segment_length
-        return mem, z
-
     def memory_retrieval(self, memory, z, q):
         sigma_q = F.elu(q) + 1.0
         a_mem = torch.matmul(sigma_q, memory) / (torch.matmul(sigma_q, z.unsqueeze(-1)) + 1e-5)
@@ -80,3 +74,14 @@ class MultiHeadInfiniAttention(nn.Module):
         beta_sigmoid = torch.sigmoid(self.beta)
         combined_attention = beta_sigmoid * a_mem + (1 - beta_sigmoid) * a_dot
         return combined_attention
+
+
+if __name__ == '__main__':
+    n_head = 8
+    dim_input = 512
+    dim_key = 64
+    dim_value = 64
+    segment_len = 32
+    model = MultiHeadInfiniAttention(n_head=n_head, dim_input=dim_input, dim_k=dim_key, segment_length=segment_len, dim_v=dim_value)
+    test = torch.randn(4, 128, dim_input)
+    x = model(test)
